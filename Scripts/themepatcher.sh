@@ -97,15 +97,6 @@ if [[ -z $1 || -z $2 ]]; then
     exit 1
 fi
 
-wallbashDirs=(
-    "${XDG_CONFIG_HOME:-$HOME.config}/hyde/wallbash"
-    "${XDG_DATA_HOME:-$HOME/.local/share}/hyde/wallbash"
-    "${XDG_DATA_HOME}/wallbash"
-    "${XDG_DATA_HOME}/hyde/wallbash"
-    "/usr/local/share/hyde/wallbash"
-    "/usr/share/hyde/wallbash"
-)
-
 # set parameters
 Fav_Theme="$1"
 
@@ -156,11 +147,11 @@ fi
 
 print_prompt "Patching" -g " --// ${Fav_Theme} //-- " "from " -b "${Theme_Dir}\n"
 
-Fav_Theme_Dir="${Theme_Dir}/Configs/.config/hyde/themes/${Fav_Theme}"
+Fav_Theme_Dir="${HOME}/.config/hypr/themes/${Fav_Theme}"
 [ ! -d "${Fav_Theme_Dir}" ] && print_prompt -r "[ERROR] " "'${Fav_Theme_Dir}'" -y " Do not Exist" && exit 1
 
 # config=$(find "${dcolDir}" -type f -name "*.dcol" | awk -v favTheme="${Fav_Theme}" -F 'theme/' '{gsub(/\.dcol$/, ".theme"); print ".config/hyde/themes/" favTheme "/" $2}')
-config=$(find "${wallbashDirs[@]}" -type f -path "*/theme*" -name "*.dcol" 2>/dev/null | awk '!seen[substr($0, match($0, /[^/]+$/))]++' | awk -v favTheme="${Fav_Theme}" -F 'theme/' '{gsub(/\.dcol$/, ".theme"); print ".config/hyde/themes/" favTheme "/" $2}')
+config=$(find "${confDir}/hyde/wallbash" -type f -path "*/theme*" -name "*.dcol" 2>/dev/null | awk '!seen[substr($0, match($0, /[^/]+$/))]++' | awk -v favTheme="${Fav_Theme}" -F 'theme/' '{gsub(/\.dcol$/, ".theme"); print ".config/hyde/themes/" favTheme "/" $2}')
 restore_list=""
 
 while IFS= read -r fileCheck; do
@@ -194,131 +185,6 @@ if [ -d "${Fav_Theme_Dir}/logo" ]; then
 fi
 
 # parse thoroughly 😁
-check_tars() {
-    local trVal
-    local inVal="${1}"
-    local gsLow
-    local gsVal
-    gsLow=$(echo "${inVal}" | tr '[:upper:]' '[:lower:]')
-    # Use hyprland variables that are set in the hypr.theme file
-    # Using case we can have a predictable output
-    gsVal="$(
-        case "${gsLow}" in
-        sddm)
-            grep "^[[:space:]]*\$SDDM[-_]THEME\s*=" "${Fav_Theme_Dir}/hypr.theme" | cut -d '=' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
-            ;;
-        gtk)
-            grep "^[[:space:]]*\$GTK[-_]THEME\s*=" "${Fav_Theme_Dir}/hypr.theme" | cut -d '=' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
-            ;;
-        icon)
-            grep "^[[:space:]]*\$ICON[-_]THEME\s*=" "${Fav_Theme_Dir}/hypr.theme" | cut -d '=' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
-            ;;
-        cursor)
-            grep "^[[:space:]]*\$CURSOR[-_]THEME\s*=" "${Fav_Theme_Dir}/hypr.theme" | cut -d '=' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
-            ;;
-        font)
-            grep "^[[:space:]]*\$FONT\s*=" "${Fav_Theme_Dir}/hypr.theme" | cut -d '=' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
-            ;;
-        document-font)
-            grep "^[[:space:]]*\$DOCUMENT[-_]FONT\s*=" "${Fav_Theme_Dir}/hypr.theme" | cut -d '=' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
-            ;;
-        monospace-font)
-            grep "^[[:space:]]*\$MONOSPACE[-_]FONT\s*=" "${Fav_Theme_Dir}/hypr.theme" | cut -d '=' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
-            ;;
-        bar-font)
-            grep "^[[:space:]]*\$BAR[-_]FONT\s*=" "${Fav_Theme_Dir}/hypr.theme" | cut -d '=' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
-            ;;
-        menu-font)
-            grep "^[[:space:]]*\$MENU[-_]FONT\s*=" "${Fav_Theme_Dir}/hypr.theme" | cut -d '=' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
-            ;;
-        notification-font)
-            grep "^[[:space:]]*\$NOTIFICATION[-_]FONT\s*=" "${Fav_Theme_Dir}/hypr.theme" | cut -d '=' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
-            ;;
-
-        *) # fallback to older method
-            awk -F"[\"']" '/^[[:space:]]*exec[[:space:]]*=[[:space:]]*gsettings[[:space:]]*set[[:space:]]*org.gnome.desktop.interface[[:space:]]*'"${gsLow}"'-theme[[:space:]]*/ {last=$2} END {print last}' "${Fav_Theme_Dir}/hypr.theme"
-            ;;
-        esac
-    )"
-
-    # fallback to older method
-    gsVal=${gsVal:-$(awk -F"[\"']" '/^[[:space:]]*exec[[:space:]]*=[[:space:]]*gsettings[[:space:]]*set[[:space:]]*org.gnome.desktop.interface[[:space:]]*'"${gsLow}"'-theme[[:space:]]*/ {last=$2} END {print last}' "${Fav_Theme_Dir}/hypr.theme")}
-
-    if [ -n "${gsVal}" ]; then
-
-        if [[ "${gsVal}" =~ ^\$\{?[A-Za-z_][A-Za-z0-9_]*\}?$ ]]; then # check is a variable is set into a variable eg $FONT=$DOCUMENT_FONT
-            print_prompt -y "[warn] " "Variable ${gsVal} detected,be sure ${gsVal} is set in hypr.theme, skipping check"
-        else
-            print_prompt -g "[OK] " "hypr.theme :: [${gsLow}]" -b " ${gsVal}"
-            trArc="$(find "${Theme_Dir}" -type f -name "${inVal}_*.tar.*")"
-            [ -f "${trArc}" ] && [ "$(echo "${trArc}" | wc -l)" -eq 1 ] && trVal="$(basename "$(tar -tf "${trArc}" | cut -d '/' -f1 | sort -u)")" && trVal="$(echo "${trVal}" | grep -w "${gsVal}")"
-            print_prompt -g "[OK] " "../*.tar.* :: [${gsLow}]" -b " ${trVal}"
-            [ "${trVal}" != "${gsVal}" ] && print_prompt -r "[ERROR] " "${gsLow} set in hypr.theme does not exist in ${inVal}_*.tar.*" && exit_flag=true
-        fi
-    else
-        [ "${2}" == "--mandatory" ] && print_prompt -r "[ERROR] " "hypr.theme :: [${gsLow}] Not Found" && exit_flag=true && return 0
-        print_prompt -y "[warn] " "hypr.theme :: [${gsLow}] Not Found, don't worry if it's not needed"
-    fi
-}
-
-check_tars Gtk --mandatory
-check_tars Icon
-check_tars Cursor
-check_tars Sddm
-check_tars Font
-check_tars Document-Font
-check_tars Monospace-Font
-check_tars Bar-Font
-check_tars Menu-Font
-check_tars Notification-Font
-print_prompt "" && [[ "${exit_flag}" = true ]] && exit 1
-
-# extract arcs
-declare -A archive_map=(
-    ["Gtk"]="${HOME}/.local/share/themes"
-    ["Icon"]="${HOME}/.local/share/icons"
-    ["Cursor"]="${HOME}/.local/share/icons"
-    ["Sddm"]="/usr/share/sddm/themes"
-    ["Font"]="${HOME}/.local/share/fonts"
-    ["Document-Font"]="${HOME}/.local/share/fonts"
-    ["Monospace-Font"]="${HOME}/.local/share/fonts"
-    ["Bar-Font"]="${HOME}/.local/share/fonts"
-    ["Menu-Font"]="${HOME}/.local/share/fonts"
-    ["Notification-Font"]="${HOME}/.local/share/fonts"
-)
-
-for prefix in "${!archive_map[@]}"; do
-    tarFile="$(find "${Theme_Dir}" -type f -name "${prefix}_*.tar.*")"
-    [ -f "${tarFile}" ] || continue
-    tgtDir="${archive_map[$prefix]}"
-
-    if [[ "${tgtDir}" =~ /(usr|usr\/local)\/share/ && -d /run/current-system/sw/share/ ]]; then
-        print_prompt -y "Detected NixOS system, changing target to /run/current-system/sw/share/..."
-        tgtDir="/run/current-system/sw/share/"
-    fi
-
-    if [ ! -d "${tgtDir}" ]; then
-        if ! mkdir -p "${tgtDir}"; then
-            print_prompt -y "Creating directory as root instead..."
-            sudo mkdir -p "${tgtDir}"
-        fi
-    fi
-
-    tgtChk="$(basename "$(tar -tf "${tarFile}" | cut -d '/' -f1 | sort -u)")"
-    [[ "${FULL_THEME_UPDATE}" = true ]] || { [ -d "${tgtDir}/${tgtChk}" ] && print_prompt -y "[skip] " "\"${tgtDir}/${tgtChk}\" already exists" && continue; }
-    print_prompt -g "[extracting] " "${tarFile} --> ${tgtDir}"
-
-    if [ -w "${tgtDir}" ]; then
-        tar -xf "${tarFile}" -C "${tgtDir}"
-    else
-        print_prompt -y "Not writable. Extracting as root: ${tgtDir}"
-        if ! sudo tar -xf "${tarFile}" -C "${tgtDir}" 2>/dev/null; then
-            print_prompt -r "Extraction by root FAILED. Giving up..."
-            print_prompt "The above error can be ignored if the '${tgtDir}' is not writable..."
-        fi
-    fi
-
-done
 
 confDir=${XDG_CONFIG_HOME:-"$HOME/.config"}
 
@@ -347,7 +213,6 @@ echo -en "${restore_list}" >"${Theme_Dir}/restore_cfg.lst"
 print_prompt -g "\n[exec] " "restore_cfg.sh \"${Theme_Dir}/restore_cfg.lst\" \"${Theme_Dir}/Configs\" \"${Fav_Theme}\"\n"
 "${scrDir}/restore_cfg.sh" "${Theme_Dir}/restore_cfg.lst" "${Theme_Dir}/Configs" "${Fav_Theme}" &>/dev/null
 if [ "${3}" != "--skipcaching" ]; then
-    "$HOME/.local/lib/hyde/swwwallcache.sh" -t "${Fav_Theme}"
     "$HOME/.local/lib/hyde/theme.switch.sh"
 fi
 

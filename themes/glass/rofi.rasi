@@ -1,7 +1,5 @@
-@import "$HOME/.config/hypr/themes/current/rofi.rasi";
-
 * {
-    main-bg:            #11111be6;
+    main-bg:            transparent;
     main-fg:            #cdd6f4ff;
     main-br:            #cba6f7ff;
     main-ex:            #f5e0dcff;

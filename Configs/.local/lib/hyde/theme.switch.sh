@@ -332,6 +332,10 @@ if [ -f "${confDir}/gtk-4.0/settings.ini" ]; then
 fi
 
 #// wallpaper
+#
+#// Copy the current theme to a standardized location
+cp -r "$HYDE_THEME_DIR" "$HOME/.config/hypr/themes/current"
+
 export -f pkg_installed
 
 [[ -d "$HYDE_CACHE_HOME/wallpapers/" ]] && find -H "$HYDE_CACHE_HOME/wallpapers" -name "*.png" -exec sh -c '
